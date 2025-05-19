@@ -5,7 +5,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=70GB
+#SBATCH --mem=20GB
 #SBATCH --output=/data/katzeram/hydractinia_qtl/genome/out_%j.log
 
 
