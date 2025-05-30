@@ -148,3 +148,15 @@ sampleNames.close()
 commandsFile.close()
 
 ```
+
+## 3. Mark Duplicate reads with Picard
+
+## 4. Call variants with GATK
+
+## 5. Filter variant calls
+
+## 6. Genetic map construction
+
+## 7. QTL mapping of sex
+
+## 8. Heterochiasmy 
