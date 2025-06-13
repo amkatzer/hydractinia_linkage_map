@@ -220,6 +220,23 @@ Notes:
 
 ## 4. Call variants with GATK
 
+```
+sinteractive --gres=lscratch:50 --cpus-per-task=2 --mem=6g
+module load GATK/4.6.0.0
+
+#dictionary file for genome
+gatk --java-options "-Xmx5g -Xms5g -Djava.io.tmpdir=/lscratch/$SLURM_JOB_ID" \
+CreateSequenceDictionary R=GCF_029227915.1_HSymV2.1_genomic.fna
+
+#index genome with samtools
+module load samtools
+samtools faidx GCF_029227915.1_HSymV2.1_genomic.fna
+
+#index BAM file
+samtools index dad.sorted.rg.md.bam
+
+```
+
 ## 5. Filter variant calls
 
 ## 6. Genetic map construction
