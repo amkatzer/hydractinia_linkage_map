@@ -220,6 +220,7 @@ Notes:
 
 ## 4. Call variants with GATK
 
+ a. Create dictionary file for genome and index it with Samtools
 ```
 sinteractive --gres=lscratch:50 --cpus-per-task=2 --mem=6g
 module load GATK/4.6.0.0
@@ -234,7 +235,197 @@ samtools faidx GCF_029227915.1_HSymV2.1_genomic.fna
 
 #index BAM file
 samtools index dad.sorted.rg.md.bam
+```
 
+ b. Index each F2
+```
+#!/bin/bash
+#SBATCH --job-name=index_bams
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=amanda.katzer@nih.gov
+#SBATCH --time=06:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=5GB
+#SBATCH --output=/data/katzeram/hydractinia_qtl/F2_samples/F2_gatk_individ_haplotypes/index_bam_out_%j.log
+
+module load samtools
+
+while read sample; do
+cd /data/katzeram/hydractinia_qtl/F2_samples/"$sample"
+pwd
+samtools index "$sample".sorted.rg.md.bam
+done <accession_list_minus_mom.txt
+```
+- Note: if you cannot get a .bai file to create for a sample, you need to rerun the sample from BWA. The large files screw up sometimes. 
+
+ c. Pre-call variants for all the samples
+```
+commandsFile = open("F2_gatk.sh", 'w')
+sampleNames = open("accession_list_minus_mom.txt", "r")
+data = sampleNames.readlines()
+
+for rp in data:
+        rp = rp.strip()
+        sampleName = str(rp) 
+
+        shellScriptName = 'r%s.sh' % (sampleName)
+        shellScript = open(shellScriptName, 'w' )
+
+        commandsFile.write('sbatch %s \n' % (shellScriptName))
+
+        shellScript.write("#!/bin/bash\n" )
+        shellScript.write("#SBATCH --job-name=%s\n" % (sampleName))
+        shellScript.write("#SBATCH --time=0-12:00:00        \n" )
+        shellScript.write("#SBATCH --mem=10gb           \n" )
+        shellScript.write("#SBATCH --mail-type=NONE          \n" )
+        shellScript.write("#SBATCH --ntasks=1                   \n" )
+        shellScript.write("#SBATCH --cpus-per-task=4            \n" )
+        shellScript.write("#SBATCH --gres=lscratch:50 \n" )
+        shellScript.write("#SBATCH --output=k_%s.log\n\n\n" % sampleName)
+
+        shellScript.write("module load GATK \n" )
+        shellScript.write('gatk HaplotypeCaller --java-options "-Xmx10g -Djava.io.tmpdir=/lscratch/$SLURM_JOB_ID" -R /data/katzeram/hydractinia_qtl/genome/GCF_029227915.1_HSymV2.1_genomic.fna -I /data/katzeram/hydractinia_qtl/F2_samples/'+sampleName+'/'+sampleName+'.sorted.rg.md.bam --emit-ref-confidence GVCF -O /data/katzeram/hydractinia_qtl/output_gatk_haplotypecaller/'+sampleName+'.out.rawsnps.indels.g.vcf --sequence-dictionary /data/katzeram/hydractinia_qtl/genome/hydractiniagenome.dict \n')
+        shellScript.write("echo '<:3)~~~~' \n" )
+
+sampleNames.close()
+commandsFile.close()
+```
+
+ d. Combine the variants into a single mega GVCF file 
+- Highly recommend copying the vcf names into an excel spreadsheet and using concat in excel to add the --variant and the \
+```
+#!/bin/bash
+#SBATCH --job-name=gatk_genotypeGVCF
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=amanda.katzer@nih.gov
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=20GB
+#SBATCH --output=/data/katzeram/hydractinia_qtl/output_gatk_haplotypecaller/gatk_genotypegvcf/out_%j.log
+#SBATCH --gres=lscratch:50 
+
+module load GATK
+
+gatk --java-options "-Xmx18g -Djava.io.tmpdir=/lscratch/$SLURM_JOB_ID" CombineGVCFs \
+ -R /data/katzeram/hydractinia_qtl/genome/GCF_029227915.1_HSymV2.1_genomic.fna \
+ --variant dad.out.rawsnps.indels.g.vcf \
+ --variant mom.out.rawsnps.indels.g.vcf \
+ --variant SRR18332129.out.rawsnps.indels.g.vcf \
+ --variant SRR18332130.out.rawsnps.indels.g.vcf \
+ --variant SRR18332131.out.rawsnps.indels.g.vcf \
+ --variant SRR18332132.out.rawsnps.indels.g.vcf \
+ --variant SRR18332133.out.rawsnps.indels.g.vcf \
+ --variant SRR18332134.out.rawsnps.indels.g.vcf \
+ --variant SRR18332135.out.rawsnps.indels.g.vcf \
+ --variant SRR18332136.out.rawsnps.indels.g.vcf \
+ --variant SRR18332137.out.rawsnps.indels.g.vcf \
+ --variant SRR18332138.out.rawsnps.indels.g.vcf \
+ --variant SRR18332139.out.rawsnps.indels.g.vcf \
+ --variant SRR18332140.out.rawsnps.indels.g.vcf \
+ --variant SRR18332141.out.rawsnps.indels.g.vcf \
+ --variant SRR18332142.out.rawsnps.indels.g.vcf \
+ --variant SRR18332143.out.rawsnps.indels.g.vcf \
+ --variant SRR18332144.out.rawsnps.indels.g.vcf \
+ --variant SRR18332145.out.rawsnps.indels.g.vcf \
+ --variant SRR18332146.out.rawsnps.indels.g.vcf \
+ --variant SRR18332147.out.rawsnps.indels.g.vcf \
+ --variant SRR18332148.out.rawsnps.indels.g.vcf \
+ --variant SRR18332149.out.rawsnps.indels.g.vcf \
+ --variant SRR18332150.out.rawsnps.indels.g.vcf \
+ --variant SRR18332151.out.rawsnps.indels.g.vcf \
+ --variant SRR18332152.out.rawsnps.indels.g.vcf \
+ --variant SRR18332153.out.rawsnps.indels.g.vcf \
+ --variant SRR18332154.out.rawsnps.indels.g.vcf \
+ --variant SRR18332155.out.rawsnps.indels.g.vcf \
+ --variant SRR18332156.out.rawsnps.indels.g.vcf \
+ --variant SRR18332157.out.rawsnps.indels.g.vcf \
+ --variant SRR18332158.out.rawsnps.indels.g.vcf \
+ --variant SRR18332159.out.rawsnps.indels.g.vcf \
+ --variant SRR18332160.out.rawsnps.indels.g.vcf \
+ --variant SRR18332161.out.rawsnps.indels.g.vcf \
+ --variant SRR18332162.out.rawsnps.indels.g.vcf \
+ --variant SRR18332163.out.rawsnps.indels.g.vcf \
+ --variant SRR18332164.out.rawsnps.indels.g.vcf \
+ --variant SRR18332165.out.rawsnps.indels.g.vcf \
+ --variant SRR18332166.out.rawsnps.indels.g.vcf \
+ --variant SRR18332167.out.rawsnps.indels.g.vcf \
+ --variant SRR18332168.out.rawsnps.indels.g.vcf \
+ --variant SRR18332169.out.rawsnps.indels.g.vcf \
+ --variant SRR18332170.out.rawsnps.indels.g.vcf \
+ --variant SRR18332171.out.rawsnps.indels.g.vcf \
+ --variant SRR18332172.out.rawsnps.indels.g.vcf \
+ --variant SRR18332173.out.rawsnps.indels.g.vcf \
+ --variant SRR18332174.out.rawsnps.indels.g.vcf \
+ --variant SRR18332175.out.rawsnps.indels.g.vcf \
+ --variant SRR18332176.out.rawsnps.indels.g.vcf \
+ --variant SRR18332177.out.rawsnps.indels.g.vcf \
+ --variant SRR18332178.out.rawsnps.indels.g.vcf \
+ --variant SRR18332179.out.rawsnps.indels.g.vcf \
+ --variant SRR18332180.out.rawsnps.indels.g.vcf \
+ --variant SRR18332181.out.rawsnps.indels.g.vcf \
+ --variant SRR18332182.out.rawsnps.indels.g.vcf \
+ --variant SRR18332183.out.rawsnps.indels.g.vcf \
+ --variant SRR18332184.out.rawsnps.indels.g.vcf \
+ --variant SRR18332185.out.rawsnps.indels.g.vcf \
+ --variant SRR18332186.out.rawsnps.indels.g.vcf \
+ --variant SRR18332187.out.rawsnps.indels.g.vcf \
+ --variant SRR18332188.out.rawsnps.indels.g.vcf \
+ --variant SRR18332189.out.rawsnps.indels.g.vcf \
+ --variant SRR18332190.out.rawsnps.indels.g.vcf \
+ --variant SRR18332191.out.rawsnps.indels.g.vcf \
+ --variant SRR18332192.out.rawsnps.indels.g.vcf \
+ --variant SRR18332193.out.rawsnps.indels.g.vcf \
+ --variant SRR18332194.out.rawsnps.indels.g.vcf \
+ --variant SRR18332195.out.rawsnps.indels.g.vcf \
+ --variant SRR18332196.out.rawsnps.indels.g.vcf \
+ --variant SRR18332197.out.rawsnps.indels.g.vcf \
+ --variant SRR18332198.out.rawsnps.indels.g.vcf \
+ --variant SRR18332199.out.rawsnps.indels.g.vcf \
+ --variant SRR18332200.out.rawsnps.indels.g.vcf \
+ --variant SRR18332202.out.rawsnps.indels.g.vcf \
+ --variant SRR18332203.out.rawsnps.indels.g.vcf \
+ --variant SRR18332204.out.rawsnps.indels.g.vcf \
+ --variant SRR18332205.out.rawsnps.indels.g.vcf \
+ --variant SRR18332206.out.rawsnps.indels.g.vcf \
+ --variant SRR18332207.out.rawsnps.indels.g.vcf \
+ --variant SRR18332208.out.rawsnps.indels.g.vcf \
+ --variant SRR18332209.out.rawsnps.indels.g.vcf \
+ --variant SRR18332210.out.rawsnps.indels.g.vcf \
+ --variant SRR18332211.out.rawsnps.indels.g.vcf \
+ --variant SRR18332212.out.rawsnps.indels.g.vcf \
+ --variant SRR18332213.out.rawsnps.indels.g.vcf \
+ --variant SRR18332214.out.rawsnps.indels.g.vcf \
+ --variant SRR18332215.out.rawsnps.indels.g.vcf \
+ --variant SRR18332216.out.rawsnps.indels.g.vcf \
+ --variant SRR18332217.out.rawsnps.indels.g.vcf \
+ --variant SRR18332218.out.rawsnps.indels.g.vcf \
+ --variant SRR18332219.out.rawsnps.indels.g.vcf \
+ -O mega.g.vcf.gz
+```
+
+ e. Joint genotyping on all samples
+```
+#!/bin/bash
+#SBATCH --job-name=gatk_genotypeGVCF
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=amanda.katzer@nih.gov
+#SBATCH --time=00:05:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=20GB
+#SBATCH --output=/data/katzeram/hydractinia_qtl/output_gatk_haplotypecaller/gatk_genotypegvcf/out_%j.log
+#SBATCH --gres=lscratch:50 
+
+module load GATK
+
+gatk --java-options "-Xmx18g -Djava.io.tmpdir=/lscratch/$SLURM_JOB_ID" GenotypeGVCFs \
+ -R /data/katzeram/hydractinia_qtl/genome/GCF_029227915.1_HSymV2.1_genomic.fna \
+ --variant /data/katzeram/hydractinia_qtl/output_gatk_haplotypecaller/mega.g.vcf.gz \
+ -O rawvariants.vcf
+
+echo '<:3)~~~~'
 ```
 
 ## 5. Filter variant calls
