@@ -429,6 +429,91 @@ echo '<:3)~~~~'
 ```
 
 ## 5. Filter variant calls
+a. Filter out any missing data using vcftools
+Note: for max-missing, 0=keep all missing data, 1=no missing data allowed
+This step differs from Chen et al. I added it in to deal with the missing data issue before the next filtering due to incompatibilites between the VCF and the script.
+```
+vcftools --vcf rawvariants.vcf --max-missing 1 --recode --recode-INFO-all --out rawvariant.missingrm.vcf
+```
+
+outputs
+```
+After filtering, kept 92 out of 92 Individuals
+Outputting VCF file...
+After filtering, kept 4644068 out of a possible 10963673 Sites
+Run Time = 2725.00 seconds
+```
+
+b. Use script from Chen et al. with modifiction to add the output writing within the script (additions from Alberto Rivera
+```
+# This script was written by Justin Paschall of the NHGRI at NIH.
+# This script was modified by Matt Nicotra to deal with an error caused by values of AD for which there was not data (i.e. a "." inst$
+# Specifically, we added an if than statement to reject variants for which this was true.
+# Takes as input a file in VCF format and outputs each line from that file after removing genotypes that do not meet filtering criter$
+
+
+import sys
+
+fout = open('pythonfiltered.vcf','w')
+
+
+InputFileName = sys.argv[1]
+
+Input = open(InputFileName,'r')
+
+for line in Input:
+  if( not line.startswith("#")):
+    line = line.rstrip()
+    linelist = line.split("\t")
+    #print("Processing variant ")
+    reject = 0
+
+
+    if("," in linelist[4]):
+      reject = 1  
+
+    for geno in linelist[9:]:
+      genolist = geno.split(":")
+      GT = genolist[0]
+      AD = genolist[1]
+      DP = genolist[2]
+      GQ = genolist[3]
+      #print(AD)
+      alleles = AD.split(",")
+      if( len(alleles) > 1 ): 
+         allele1 = int(alleles[0])
+         allele2 = int(alleles[1])
+
+         if( (GT == "0/0" or GT == "0|0") and (allele2 > 2 or allele1 < 10)):
+            #print "geno error 0/0: " + str(genolist)
+            reject = 1
+
+         if( (GT == "1/1" or GT == "1|1") and (allele1 > 2 or allele2 < 10)):
+            #print "geno error 0/0: " + str(genolist)
+            reject = 1
+
+         total_alleles = allele1 + allele2
+      
+         if((allele1+allele2) > 0):
+            allele2perc = float(allele2) / float(allele1+allele2)
+ 
+         if( ( (allele1+allele2) > 0 ) and ( (GT == "0/1" or GT == "0|1") and ((allele2 < 10 or allele1 < 10) or (  allele2perc < 0.3$
+            #print "geno error 0/1: " + str(genolist) + str(allele2perc)
+            reject = 1
+    
+      else: 
+         reject = 1
+
+    if not reject:
+      fout.write(line)
+      #print(line)
+
+    #print line
+
+fout.close()
+```
+
+c. Filtering by GATK best practices (Chen et al. script(s))
 
 ## 6. Genetic map construction
 
