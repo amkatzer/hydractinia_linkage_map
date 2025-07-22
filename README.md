@@ -514,6 +514,22 @@ fout.close()
 ```
 
 c. Filtering by GATK best practices (Chen et al. script(s))
+Updated for the new version of GATK. The version used in Chen et al is depricated. 
+
+First, make a text file containing all the header information from the rawvariants vcf that was filtered out by the above custom script. Concatenate it to the filtered vcf. Otherwise, the downstream programs do not recognize it as a vcf.
+
+index the vcf
+```
+bgzip -c header_pythonfiltered.vcf > hpythonfiltered.vcf.gz
+bcftools index hpythonfiltered.vcf.gz
+```
+
+GATK filtering:
+```
+
+
+```
+
 
 ## 6. Genetic map construction
 
